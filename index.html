@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SIAP Dashboard — Sistem Informasi Aspirasi & Transparansi Publik</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        :root {
+            --primary: #0b74de;
+            --accent: #0ea5a4;
+            --muted: #6b7280;
+            --card: #ffffff;
+            --bg: #f3f4f6;
+            --glass: rgba(255, 255, 255, 0.7);
+            font-family: Inter, ui-sans-serif, system-ui;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: #0f172a
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh
+        }
+
+        header.topbar {
+            grid-column: 1/3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: linear-gradient(90deg, var(--primary), #2b8be6);
+            color: white
+        }
+
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .brand .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: 700
+        }
+
+        nav.sidebar {
+            background: transparent;
+            padding: 20px;
+            border-right: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        nav .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        nav a {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            color: var(--muted);
+            text-decoration: none
+        }
+
+        nav a.active {
+            background: linear-gradient(90deg, var(--glass), rgba(255, 255, 255, 0.6));
+            color: var(--primary);
+            font-weight: 600
+        }
+
+        main.content {
+            padding: 20px
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px
+        }
+
+        .row-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .row-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .row-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .card {
+            background: var(--card);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 6px 18px rgba(2, 6, 23, 0.06)
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column
+        }
+
+        .stat .value {
+            font-size: 22px;
+            font-weight: 700
+        }
+
+        .stat .label {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        .table th,
+        .table td {
+            padding: 10px;
+            border-bottom: 1px solid #eef2f6;
+            text-align: left
+        }
+
+        #map {
+            height: 320px;
+            border-radius: 10px
+        }
+
+        footer {
+            padding: 12px 24px;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        @media(max-width:900px) {
+            .app {
+                grid-template-columns: 1fr
+            }
+
+            nav.sidebar {
+                display: flex;
+                flex-direction: row;
+                overflow: auto;
+                border-right: none;
+                border-bottom: 1px solid rgba(15, 23, 42, 0.06)
+            }
+
+            header.topbar {
+                grid-column: 1/2
+            }
+        }
+
+        @media(max-width:640px) {
+
+            .row-3,
+            .row-4,
+            .row-2 {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px
+        }
+
+        .tag.open {
+            background: #fef3c7;
+            color: #92400e
+        }
+
+        .tag.processing {
+            background: #d1fae5;
+            color: #065f46
+        }
+
+        .tag.closed {
+            background: #e6e6fa;
+            color: #3b2bdb
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+
+        <header class="topbar">
+            <div class="brand">
+                <div class="logo">SIAP</div>
+                <div>
+                    <div style="font-weight:700">SIAP — Sistem Informasi Aspirasi & Transparansi Publik</div>
+                    <div style="font-size:13px;opacity:0.9">Dashboard Pengembangan & Monitoring</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center">
+                <input placeholder="Cari laporan, lokasi, ID..."
+                    style="padding:8px 12px;border-radius:8px;border:none;min-width:280px" />
+                <div style="display:flex;align-items:center;gap:12px">
+                    <button
+                        style="background:transparent;border:1px solid rgba(255,255,255,0.18);padding:8px 12px;border-radius:8px;color:white">Export</button>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <img src="https://i.pravatar.cc/40" alt="user" style="border-radius:999px" />
+                        <div style="text-align:right">
+                            <div style="font-size:14px">Admin</div>
+                            <div style="font-size:12px;opacity:0.85">Kota Contoh</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <nav class="sidebar card">
+            <div style="font-weight:700;margin-bottom:8px">Menu</div>
+            <div class="menu">
+                <a class="active">🏠 Overview</a>
+                <a>📍 Peta Laporan</a>
+                <a>🗂️ Kategori & Statistik</a>
+                <a>🧾 Data & Ekspor</a>
+                <a>⚙️ Pengaturan</a>
+                <a>🔒 Manajemen User</a>
+            </div>
+
+            <hr style="margin:14px 0;border:none;border-top:1px solid #eef2f6" />
+            <div>
+                <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Ringkasan Harian</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;justify-content:space-between"><small class="muted">Laporan
+                            Baru</small><strong>28</strong></div>
+                    <div style="display:flex;justify-content:space-between"><small class="muted">Dalam
+                            Proses</small><strong>13</strong></div>
+                    <div style="display:flex;justify-content:space-between"><small
+                            class="muted">Selesai</small><strong>72</strong></div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="content">
+            <!-- Statistik utama -->
+            <section class="grid row-4" style="margin-bottom:16px">
+                <div class="card stat">
+                    <div class="value" id="totalReports">0</div>
+                    <div class="label">Total Laporan</div>
+                </div>
+                <div class="card stat">
+                    <div class="value" id="openReports">0</div>
+                    <div class="label">Laporan Terbuka</div>
+                </div>
+                <div class="card stat">
+                    <div class="value" id="avgResponse">0 hari</div>
+                    <div class="label">Rata-rata Respon</div>
+                </div>
+                <div class="card stat">
+                    <div class="value" id="userActive">0</div>
+                    <div class="label">User Aktif</div>
+                </div>
+            </section>
+
+            <section class="grid row-2" style="margin-bottom:16px">
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:12px">Tren Laporan (30 hari)</div>
+                    <canvas id="trendChart" height="140"></canvas>
+                </div>
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:12px">Distribusi Kategori</div>
+                    <canvas id="categoryChart" height="140"></canvas>
+                </div>
+            </section>
+
+            <section class="grid row-2" style="margin-bottom:16px">
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:8px">Peta Interaktif Laporan</div>
+                    <div id="map"></div>
+                </div>
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:8px">Daftar Laporan Terbaru</div>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Kategori</th>
+                                <th>Lokasi</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="grid row-2">
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:8px">Insight & Rekomendasi</div>
+                    <ul style="margin:0 0 0 18px;color:var(--muted)">
+                        <li>Area X: peningkatan laporan kebersihan +20% minggu lalu — usulkan patroli kebersihan.</li>
+                        <li>Kategori pelayanan publik: rata-rata waktu respon di atas SLA — rekomendasi optimasi
+                            workflow instansi.</li>
+                        <li>Perkuat verifikasi bukti: tambahkan integrasi CCTV & database resmi.</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <div style="font-weight:700;margin-bottom:8px">Kontrol & Filter</div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <label>Periode
+                            <select>
+                                <option>30 hari</option>
+                                <option>7 hari</option>
+                                <option>1 tahun</option>
+                            </select>
+                        </label>
+                        <label>Instansi
+                            <select>
+                                <option>Semua</option>
+                                <option>Pemerintah Kota</option>
+                                <option>Kementerian</option>
+                            </select>
+                        </label>
+                        <button
+                            style="padding:8px;border-radius:8px;border:none;background:var(--primary);color:white;">Terapkan
+                            Filter</button>
+                    </div>
+                </div>
+            </section>
+
+            <footer>© 2025 SIAP - Sistem Informasi Aspirasi & Transparansi Publik</footer>
+        </main>
+
+    </div>
+
+    <script>
+        const sampleReports = [
+            { id: 'R-20250901-001', cat: 'Kebersihan', loc: 'Kecamatan A', status: 'open', date: '2025-09-30' },
+            { id: 'R-20250901-002', cat: 'Transportasi', loc: 'Jalan B', status: 'processing', date: '2025-09-29' },
+            { id: 'R-20250901-003', cat: 'Pelayanan Publik', loc: 'Kantor C', status: 'closed', date: '2025-09-28' },
+            { id: 'R-20250901-004', cat: 'Kesehatan', loc: 'Puskesmas D', status: 'open', date: '2025-09-27' },
+            { id: 'R-20250901-005', cat: 'Korupsi', loc: 'Instansi E', status: 'processing', date: '2025-09-25' },
+        ];
+
+        document.getElementById('totalReports').innerText = 188;
+        document.getElementById('openReports').innerText = 24;
+        document.getElementById('avgResponse').innerText = '2.3 hari';
+        document.getElementById('userActive').innerText = 120;
+
+        const tbody = document.getElementById('reportTable');
+        sampleReports.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.id}</td><td>${r.cat}</td><td>${r.loc}</td><td><span class='tag ${r.status === 'open' ? 'open' : r.status === 'processing' ? 'processing' : 'closed'}'>${r.status}</span></td><td>${r.date}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        const trendCtx = document.getElementById('trendChart');
+        new Chart(trendCtx, { type: 'line', data: { labels: [...Array(30)].map((_, i) => `D-${29 - i}`), datasets: [{ label: 'Jumlah Laporan', data: Array.from({ length: 30 }, () => Math.floor(Math.random() * 20) + 5), tension: 0.4, borderColor: 'rgba(11,116,222,0.9)', backgroundColor: 'rgba(11,116,222,0.08)' }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+
+        const catCtx = document.getElementById('categoryChart');
+        new Chart(catCtx, { type: 'doughnut', data: { labels: ['Kebersihan', 'Pelayanan Publik', 'Transportasi', 'Kesehatan', 'Korupsi'], datasets: [{ data: [45, 30, 25, 20, 8], backgroundColor: ['#0b74de', '#0ea5a4', '#f59e0b', '#ef4444', '#7c3aed'] }] }, options: { responsive: true } });
+
+        const map = L.map('map').setView([-6.2, 106.816], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        const markers = [
+            { lat: -6.21, lng: 106.82, title: 'Laporan R-001: Kebersihan' },
+            { lat: -6.18, lng: 106.81, title: 'Laporan R-002: Transportasi' },
+            { lat: -6.25, lng: 106.83, title: 'Laporan R-003: Pelayanan Publik' },
+        ];
+        markers.forEach(m => { L.marker([m.lat, m.lng]).addTo(map).bindPopup(m.title) });
+    </script>
+</body>
+
+</html>
